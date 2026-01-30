@@ -14,7 +14,7 @@ function onDragStart (source, piece, position, orientation) {
 }
 
 function onDrop (source, target) {
-  // Tenta fazer o movimento na lógica (memória)
+  // Tenta fazer o movimento na lógica
   var move = game.move({
     from: source,
     to: target,
@@ -37,25 +37,28 @@ function updateStatus () {
   var moveColor = (game.turn() === 'w') ? 'Brancas' : 'Pretas'
 
   if (game.in_checkmate()) {
-    status = 'Fim de jogo, ' + moveColor + ' perderam (xeque-mate).'
+    status = 'Fim de jogo. ' + moveColor + ' perderam (Xeque-mate).'
   } else if (game.in_draw()) {
     status = 'Empate!'
   } else {
     status = moveColor + ' jogam'
     if (game.in_check()) {
-      status += ', ' + moveColor + ' estão em xeque'
+      status += ' (EM XEQUE!)'
     }
   }
 
   $status.html(status)
 }
 
+// CONFIGURAÇÃO DO TABULEIRO
 var config = {
   draggable: true,
   position: 'start',
   onDragStart: onDragStart,
   onDrop: onDrop,
-  onSnapEnd: onSnapEnd
+  onSnapEnd: onSnapEnd,
+  // CORREÇÃO: Link para buscar as imagens das peças na internet
+  pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
 }
 
 board = Chessboard('myBoard', config)
