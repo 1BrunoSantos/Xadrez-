@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Xadrez Pessoal</title>
+    <title>Xadrez vs Bot</title>
     
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
-    
     <link rel="manifest" href="manifest.json">
 
     <style>
@@ -18,69 +17,102 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: white;
-            overflow: hidden; /* Evita rolagem da página inteira */
+            overflow: hidden; /* Trava a rolagem da página */
         }
+        h2 { margin-bottom: 10px; font-size: 1.5rem; }
         #myBoard {
             width: 90vw;
             max-width: 400px;
-            /* CRÍTICO PARA CELULAR: Impede a tela de andar quando você arrasta a peça */
+            /* OBRIGATÓRIO PARA CELULAR: Impede a tela de andar ao arrastar peça */
             touch-action: none; 
         }
         .status {
-            margin-top: 20px;
-            font-size: 1.2rem;
+            margin-top: 15px;
+            font-size: 1.1rem;
             text-align: center;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            width: 80%;
         }
         button {
-            margin-top: 15px;
-            padding: 12px 24px;
+            margin-top: 20px;
+            padding: 12px 30px;
             font-size: 1rem;
             cursor: pointer;
-            background: #e67e22;
+            background: #27ae60;
             border: none;
             color: white;
-            border-radius: 5px;
-            touch-action: manipulation;
+            border-radius: 50px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
+        button:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
 
+    <h2>Você (Brancas) vs Bot</h2>
     <div id="myBoard"></div>
-    <div class="status" id="status">Carregando...</div>
-    <button id="resetBtn">Reiniciar Jogo</button>
+    <div class="status" id="status">Sua vez!</div>
+    <button id="resetBtn">Novo Jogo</button>
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     
     <script>
-        // Coloquei o JS aqui dentro para evitar problemas de carregamento de arquivo externo
-        // Se funcionar assim, depois você pode separar de novo.
-        
+        // --- LÓGICA DO JOGO ---
         try {
             var board = null
             var game = new Chess()
             var $status = $('#status')
 
             function onDragStart (source, piece, position, orientation) {
+                // Se o jogo acabou, ninguém mexe
                 if (game.game_over()) return false
-                if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-                    (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+
+                // IMPORTANTE: Só permite você mexer as BRANCAS (w)
+                // Se a peça for preta (b) ou se for a vez das pretas, bloqueia
+                if (piece.search(/^b/) !== -1 || game.turn() === 'b') {
                     return false
                 }
             }
 
             function onDrop (source, target) {
+                // Tenta fazer o movimento
                 var move = game.move({
                     from: source,
                     to: target,
-                    promotion: 'q'
+                    promotion: 'q' // Sempre promove para Rainha
                 })
 
+                // Se movimento inválido, volta a peça
                 if (move === null) return 'snapback'
+
+                updateStatus()
+
+                // Se o jogo não acabou, manda o Bot jogar após 0.2 segundos
+                if (!game.game_over()) {
+                    window.setTimeout(makeRandomMove, 250)
+                }
+            }
+
+            // --- INTELIGÊNCIA DO BOT (Aleatória) ---
+            function makeRandomMove () {
+                var possibleMoves = game.moves()
+
+                // Se acabou o jogo (xeque-mate ou afogamento)
+                if (possibleMoves.length === 0) return
+
+                // Escolhe um movimento aleatório da lista de possíveis
+                var randomIdx = Math.floor(Math.random() * possibleMoves.length)
+                game.move(possibleMoves[randomIdx])
+
+                // Atualiza o tabuleiro visual
+                board.position(game.fen())
                 updateStatus()
             }
 
@@ -90,15 +122,19 @@
 
             function updateStatus () {
                 var status = ''
-                var moveColor = (game.turn() === 'w') ? 'Brancas' : 'Pretas'
+                var moveColor = (game.turn() === 'w') ? 'Você' : 'Bot'
 
                 if (game.in_checkmate()) {
-                    status = 'Fim: ' + moveColor + ' perderam.'
+                    // Quem deveria jogar perdeu. Se era a vez do Bot, Você ganhou.
+                    var winner = (game.turn() === 'w') ? 'Bot venceu' : 'VOCÊ VENCEU!'
+                    status = 'Fim de Jogo: ' + winner
                 } else if (game.in_draw()) {
                     status = 'Empate!'
                 } else {
-                    status = moveColor + ' jogam'
-                    if (game.in_check()) status += ' (XEQUE!)'
+                    status = (game.turn() === 'w') ? 'Sua vez (Brancas)' : 'Bot pensando...'
+                    if (game.in_check()) {
+                        status += ' (XEQUE!)'
+                    }
                 }
                 $status.html(status)
             }
@@ -109,7 +145,7 @@
                 onDragStart: onDragStart,
                 onDrop: onDrop,
                 onSnapEnd: onSnapEnd,
-                // AQUI ESTÁ A CORREÇÃO DAS IMAGENS:
+                // CORREÇÃO DAS IMAGENS: Link direto da Wikipedia
                 pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
             }
 
@@ -122,15 +158,14 @@
             })
 
             updateStatus()
-            console.log("Jogo carregado com sucesso!");
 
         } catch (e) {
-            alert("Erro no código: " + e.message);
-            $('#status').text("Erro no código. Veja o alerta.");
+            alert("Erro: " + e.message);
         }
     </script>
 
     <script>
+        // Service Worker para instalação
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
         }
